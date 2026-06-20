@@ -97,3 +97,66 @@ EXCEPTION
         RAISE EXCEPTION 'Transação Abortada! Motivo: %', SQLERRM;
 END;
 $$;
+
+
+
+
+-- TRIGGER 1: CONTROLAR ESTOQUE AUTOMATICAMENTE E BARRAR SE FALTAR PRODUTO
+
+CREATE OR REPLACE FUNCTION verificar_e_atualizar_estoque()
+RETURNS TRIGGER AS $$
+BEGIN
+   
+    IF (SELECT quantidade_estoque FROM Produto WHERE id_produto = NEW.id_produto) < NEW.quantidade_vendida THEN
+      
+        RAISE EXCEPTION 'Estoque insuficiente para o produto ID %', NEW.id_produto;
+    END IF;
+
+    
+    UPDATE Produto 
+    SET quantidade_estoque = quantidade_estoque - NEW.quantidade_vendida 
+    WHERE id_produto = NEW.id_produto;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tg_controle_estoque
+BEFORE INSERT ON ItensVenda
+FOR EACH ROW
+EXECUTE FUNCTION verificar_e_atualizar_estoque();
+
+
+
+-- TRIGGER 2: CALCULAR CUSTOS, DESPESAS E LUCRO REAL A CADA ITEM INSERIDO
+
+CREATE OR REPLACE FUNCTION calcular_financeiro_venda()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_custo_unitario NUMERIC(10,2);
+    v_custo_total_item NUMERIC(10,2);
+    v_despesa_item NUMERIC(10,2);
+BEGIN
+    -- Busca o custo de reposição do produto vendido
+    SELECT custo_reposicao INTO v_custo_unitario FROM Produto WHERE id_produto = NEW.id_produto;
+
+    -- Calcula os custos e despesas proporcionais deste item (ex: estimando 5% de despesa operacional sobre o preço de venda)
+    v_custo_total_item := v_custo_unitario * NEW.quantidade_vendida;
+    v_despesa_item := (NEW.preco_unitario * NEW.quantidade_vendida) * 0.05; 
+
+    -- Atualiza os acumulados na tabela Venda
+
+    UPDATE Venda
+    SET valor_reposicao = valor_reposicao + v_custo_total_item,
+        valor_despesas = valor_despesas + v_despesa_item,
+        valor_lucro = valor_total - (valor_reposicao + v_custo_total_item) - (valor_despesas + v_despesa_item)
+    WHERE id_venda = NEW.id_venda;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tg_calculo_financeiro
+AFTER INSERT ON ItensVenda
+FOR EACH ROW
+EXECUTE FUNCTION calcular_financeiro_venda();
