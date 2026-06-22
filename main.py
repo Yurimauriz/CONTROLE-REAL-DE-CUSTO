@@ -186,7 +186,7 @@ def listar_produtos_ui():
             print("Nenhum produto cadastrado.")
             return
             
-        print(f"{'ID':<5} | {'Produto':<20} | {'Marca':<12} | {'Qtd':<5} | {'Custo':<10} | {'Preço':<10} | {'Resp. ID':<8}")
+        print(f"{'ID':<5} | {'Produto':<20} | {'Marca':<12} | {'Qtd':<5} | {'Custo':<10} | {'Preço':<10} | {'Responsavel':<8}")
         print("-" * 75)
         for p in produtos:
             print(f"{p['id_produto']:<5} | {p['nome_produto']:<20} | {p['marca']:<12} | {p['quantidade_estoque']:<5} | R$ {p['custo_reposicao']:<7.2f} | R$ {p['preco_venda']:<7.2f} | {p['id_usuario']:<8}")
@@ -338,4 +338,4 @@ def main():
             print("\n Opção inválida! Tente novamente.")
 
 if __name__ == "__main__":
-    main()
+    main()

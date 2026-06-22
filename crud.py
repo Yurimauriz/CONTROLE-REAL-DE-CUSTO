@@ -155,9 +155,10 @@ def listar_produtos():
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT id_produto, nome_produto, marca, quantidade_estoque, custo_reposicao, preco_venda, id_usuario 
-                FROM Produto 
-                ORDER BY id_produto;
+                SELECT p.id_produto, p.nome_produto, p.marca, p.quantidade_estoque, p.custo_reposicao, p.preco_venda, u.nome as nome_usuario 
+                FROM Produto p
+                JOIN Usuario u ON p.id_usuario = u.id_usuario
+                ORDER BY p.id_produto;
             """
             cursor.execute(query)
             rows = cursor.fetchall()
