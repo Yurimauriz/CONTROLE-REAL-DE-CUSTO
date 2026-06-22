@@ -87,14 +87,7 @@ BEGIN
         v_total_venda := v_total_venda + (v_preco_un * p_quantidades[i]);
     END LOOP;
 
-    UPDATE Venda SET valor_total = v_total_venda WHERE id_venda = v_id_venda;
-
-    COMMIT;
-    
-EXCEPTION
-    WHEN OTHERS THEN
-        ROLLBACK;
-        RAISE EXCEPTION 'Transação Abortada! Motivo: %', SQLERRM;
+    -- O valor_total e valor_lucro são atualizados automaticamente na trigger tg_calculo_financeiro
 END;
 $$;
 
@@ -136,20 +129,22 @@ DECLARE
     v_custo_unitario NUMERIC(10,2);
     v_custo_total_item NUMERIC(10,2);
     v_despesa_item NUMERIC(10,2);
+    v_receita_item NUMERIC(10,2);
 BEGIN
     -- Busca o custo de reposição do produto vendido
     SELECT custo_reposicao INTO v_custo_unitario FROM Produto WHERE id_produto = NEW.id_produto;
 
-    -- Calcula os custos e despesas proporcionais deste item (ex: estimando 5% de despesa operacional sobre o preço de venda)
+    -- Calcula os custos, despesas e receita proporcional deste item (ex: estimando 5% de despesa operacional sobre o preço de venda)
     v_custo_total_item := v_custo_unitario * NEW.quantidade_vendida;
     v_despesa_item := (NEW.preco_unitario * NEW.quantidade_vendida) * 0.05; 
+    v_receita_item := NEW.preco_unitario * NEW.quantidade_vendida;
 
     -- Atualiza os acumulados na tabela Venda
-
     UPDATE Venda
-    SET valor_reposicao = valor_reposicao + v_custo_total_item,
+    SET valor_total = valor_total + v_receita_item,
+        valor_reposicao = valor_reposicao + v_custo_total_item,
         valor_despesas = valor_despesas + v_despesa_item,
-        valor_lucro = valor_total - (valor_reposicao + v_custo_total_item) - (valor_despesas + v_despesa_item)
+        valor_lucro = (valor_total + v_receita_item) - (valor_reposicao + v_custo_total_item) - (valor_despesas + v_despesa_item)
     WHERE id_venda = NEW.id_venda;
 
     RETURN NEW;
